@@ -127,157 +127,172 @@ st.markdown("""
 # ─────────────────────────────────────────────
 #  SYNTHETIC USER DATA  (10–15 users)
 # ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
+#  SYNTHETIC USER DATA (12 Variasi Kasus Ekstrem)
+# ─────────────────────────────────────────────
 USERS = {
+    # 1. Genre Terdaftar, History Lumayan, Semua Judul Ada di Dataset (Normal - High Score)
     "U001": {
         "name": "Arya Kusuma",
-        "age": 24, "gender": "Male", "city": "Jakarta",
+        "age": 24,
         "preferred_genres": ["Thrillers", "Sci-Fi & Fantasy"],
         "watch_history": [
-            {"title": "Bird Box", "rating": 5},
-            {"title": "The Platform", "rating": 5},
-            {"title": "Black Mirror: Bandersnatch", "rating": 4},
-            {"title": "Inception", "rating": 5},
-            {"title": "Annihilation", "rating": 3},
+            {"title": "Bird Box"},
+            {"title": "The Platform"},
+            {"title": "Black Mirror: Bandersnatch"},
+            {"title": "Inception"},
+            {"title": "Annihilation"},
         ]
     },
+    # 2. Genre Terdaftar, History Sedikit, Semua Judul Ada di Dataset
     "U002": {
         "name": "Siti Rahayu",
-        "age": 31, "gender": "Female", "city": "Bandung",
+        "age": 31,
         "preferred_genres": ["Romantic Movies", "Comedies"],
         "watch_history": [
-            {"title": "To All the Boys I've Loved Before", "rating": 5},
-            {"title": "Always Be My Maybe", "rating": 4},
-            {"title": "The Kissing Booth", "rating": 3},
-            {"title": "Set It Up", "rating": 5},
+            {"title": "To All the Boys I've Loved Before"},
+            {"title": "Always Be My Maybe"},
         ]
     },
+    # 3. Genre Terdaftar, Sebagian History Ada di Dataset (Campuran Film Indo Lama & Baru)
     "U003": {
         "name": "Budi Santoso",
-        "age": 42, "gender": "Male", "city": "Surabaya",
-        "preferred_genres": ["Documentaries", "Crime TV Shows"],
+        "age": 28,
+        "preferred_genres": ["Dramas", "International Movies"],
         "watch_history": [
-            {"title": "Making a Murderer", "rating": 5},
-            {"title": "The Keepers", "rating": 5},
-            {"title": "Icarus", "rating": 4},
-            {"title": "Wild Wild Country", "rating": 5},
-            {"title": "Dirty Money", "rating": 4},
+            {"title": "Gie"},                       # Ada di Dataset Netflix (Lama)
+            {"title": "Srimulat: Hil yang Mustahal"},# TIdak Ada di Dataset Netflix (Baru)
+            {"title": "Ali & Ratu Ratu Queens"},     # Ada di Dataset Netflix
+            {"title": "Agak Laen"},                 # Tidak Ada di Dataset Netflix (Baru)
         ]
     },
+    # 4. Genre Terdaftar, TAPI Seluruh History TIDAK Ada di Dataset (Film Indo Bioskop Terbaru)
+    # Efek: Cold start terpicu (Fallback ke Preferred Genres), kemiripan genre mungkin masih tinggi, tapi hit rate bisa jatuh jika rekomendasinya meleset dari history aktor/sutradara.
     "U004": {
         "name": "Dewi Lestari",
-        "age": 27, "gender": "Female", "city": "Yogyakarta",
-        "preferred_genres": ["International Movies", "Dramas"],
-        "watch_history": [
-            {"title": "Parasite", "rating": 5},
-            {"title": "Okja", "rating": 4},
-            {"title": "The Wailing", "rating": 3},
-            {"title": "Peninsula", "rating": 4},
-        ]
-    },
-    "U005": {
-        "name": "Reza Firmansyah",
-        "age": 19, "gender": "Male", "city": "Medan",
-        "preferred_genres": ["Action & Adventure", "Anime Features"],
-        "watch_history": [
-            {"title": "John Wick", "rating": 5},
-            {"title": "Extraction", "rating": 4},
-            {"title": "The Old Guard", "rating": 4},
-            {"title": "6 Underground", "rating": 3},
-        ]
-    },
-    "U006": {
-        "name": "Nia Permata",
-        "age": 35, "gender": "Female", "city": "Semarang",
+        "age": 27,
         "preferred_genres": ["Horror Movies", "Thrillers"],
         "watch_history": [
-            {"title": "The Haunting of Hill House", "rating": 5},
-            {"title": "Haunted", "rating": 4},
-            {"title": "The Ritual", "rating": 5},
-            {"title": "His House", "rating": 4},
+            {"title": "Siksa Kubur"},               # Tidak Ada (Film 2024)
+            {"title": "KKN di Desa Penari"},        # Tidak Ada
+            {"title": "Pengabdi Setan 2: Communion"},# Tidak Ada
         ]
     },
+    # 5. Genre Sebagian Ada (Campuran Normal & Absurd), History Watch Banyak (Ada di Dataset)
+    "U005": {
+        "name": "Reza Firmansyah",
+        "age": 19,
+        "preferred_genres": ["Action & Adventure", "Otomotif Karburator Honda"], # Absurd campuran
+        "watch_history": [
+            {"title": "John Wick"},
+            {"title": "Extraction"},
+            {"title": "The Old Guard"},
+            {"title": "6 Underground"},
+        ]
+    },
+    # 6. Genre Sebagian Ada (Campuran), History Watch Sedikit (Ada di Dataset)
+    "U006": {
+        "name": "Nia Permata",
+        "age": 35,
+        "preferred_genres": ["Documentaries", "Kriptografi Quantum Cyber"], # Absurd campuran
+        "watch_history": [
+            {"title": "Our Planet"},
+            {"title": "Making a Murderer"},
+        ]
+    },
+    # 7. Genre Sebagian Ada, History Watch Banyak TAPI TIDAK ADA di Dataset
     "U007": {
         "name": "Farhan Nugroho",
-        "age": 29, "gender": "Male", "city": "Makassar",
-        "preferred_genres": ["Stand-Up Comedy", "Comedies"],
+        "age": 29,
+        "preferred_genres": ["Comedies", "Budidaya Ikan Lele Kolam Terpal"], 
         "watch_history": [
-            {"title": "Dave Chappelle: Sticks & Stones", "rating": 5},
-            {"title": "Ali Wong: Baby Cobra", "rating": 5},
-            {"title": "John Mulaney: Kid Gorgeous at Radio City", "rating": 4},
-            {"title": "Hannah Gadsby: Nanette", "rating": 5},
+            {"title": "Ancika: Dia yang Bersamaku 1995"}, # Tidak Ada
+            {"title": "Petualangan Sherina 2"},          # Tidak Ada
+            {"title": "Pasutri Gaje"},                   # Tidak Ada
+            {"title": "Kaka Boss"},                      # Tidak Ada
         ]
     },
+    # 8. Genre Sebagian Ada, History Watch Sedikit TAPI TIDAK ADA di Dataset
     "U008": {
         "name": "Maya Indah",
-        "age": 22, "gender": "Female", "city": "Denpasar",
-        "preferred_genres": ["Children & Family Movies", "Animated"],
+        "age": 22,
+        "preferred_genres": ["Children & Family Movies", "Resep Seblak Ceker Pedas"], 
         "watch_history": [
-            {"title": "Klaus", "rating": 5},
-            {"title": "Over the Moon", "rating": 4},
-            {"title": "The Willoughbys", "rating": 4},
-            {"title": "Back to the Outback", "rating": 3},
+            {"title": "Badarawuhi di Desa Penari"}, # Tidak Ada
+            {"title": "Vina: Sebelum 7 Hari"},       # Tidak Ada
         ]
     },
+    # 9. TARGET METRIK RENDAH: Genre Semuanya TIdak Ada (Sangat Absurd), History Watch Banyak & Terdaftar
+    # Efek: Mengacaukan profil agregasi rata-rata vektor jika model dipaksa membaca keyword absurd.
     "U009": {
         "name": "Hendra Wijaya",
-        "age": 48, "gender": "Male", "city": "Palembang",
-        "preferred_genres": ["Documentaries", "Science & Nature TV"],
+        "age": 45,
+        "preferred_genres": ["Mesin Jahit Konveksi", "Suku Cadang Mesin Diesel Diesel"],
         "watch_history": [
-            {"title": "Our Planet", "rating": 5},
-            {"title": "Night on Earth", "rating": 4},
-            {"title": "72 Dangerous Animals: Asia", "rating": 4},
-            {"title": "Abstract: The Art of Design", "rating": 5},
+            {"title": "Inception"},
+            {"title": "Interstellar"},
+            {"title": "The Matrix"},
+            {"title": "Blade Runner 2049"},
         ]
     },
+    # 10. TARGET METRIK RENDAH: Genre Semuanya Tidak Ada (Absurd), History Watch Sedikit & Terdaftar
     "U010": {
         "name": "Ratna Sari",
-        "age": 33, "gender": "Female", "city": "Balikpapan",
-        "preferred_genres": ["TV Dramas", "Korean TV Shows"],
+        "age": 33,
+        "preferred_genres": ["Pertanian Organik Hidroponik", "Tekstil Industri Kain Katun"],
         "watch_history": [
-            {"title": "Crash Landing on You", "rating": 5},
-            {"title": "Itaewon Class", "rating": 5},
-            {"title": "Extracurricular", "rating": 4},
-            {"title": "My Holo Love", "rating": 3},
+            {"title": "The Notebook"},
+            {"title": "Pride & Prejudice"},
         ]
     },
+    # 11. PENGHANCUR METRIK (TARGET HIT RATE = 0 & SIMILARITY < 0.4): 
+    # Genre Semuanya Tidak Ada (Absurd), History Banyak TAPI SEMUANYA TIDAK ADA di Dataset.
+    # Efek: Sistem terpaksa masuk ke mode Cold-Start murni memakai teks absurd. SBERT akan menghasilkan similarity score yang sangat rendah (< 0.4) dengan katalog film bioskop, dan evaluasi Overlap pastinya bernilai 0 (Hit Rate = 0).
     "U011": {
         "name": "Dimas Prasetyo",
-        "age": 25, "gender": "Male", "city": "Tangerang",
-        "preferred_genres": ["Sci-Fi & Fantasy", "Action & Adventure"],
+        "age": 25,
+        "preferred_genres": ["Alat Pertukangan Semen Semprot", "Sistem Pipa Pembuangan Lumpur Sidoarjo"],
         "watch_history": [
-            {"title": "Stranger Things", "rating": 5},
-            {"title": "Dark", "rating": 5},
-            {"title": "The OA", "rating": 4},
-            {"title": "Altered Carbon", "rating": 4},
+            {"title": "Sekawan Limo"},            # Tidak Ada
+            {"title": "Ipar adalah Maut"},         # Tidak Ada
+            {"title": "Jurnal Risa by Risa Saraswati"}, # Tidak Ada
+            {"title": "Do You See What I See"},    # Tidak Ada
         ]
     },
+    # 12. PENGHANCUR METRIK: Genre Semuanya Tidak Ada (Absurd), History Sedikit & TIDAK ADA di Dataset
     "U012": {
         "name": "Laila Azzahra",
-        "age": 30, "gender": "Female", "city": "Padang",
-        "preferred_genres": ["Crime TV Shows", "Thrillers"],
+        "age": 30,
+        "preferred_genres": ["Manajemen Akuntansi Neraca Saldo", "Kalkulus Integral Turunan Parsial"],
         "watch_history": [
-            {"title": "Mindhunter", "rating": 5},
-            {"title": "Narcos", "rating": 5},
-            {"title": "Ozark", "rating": 5},
-            {"title": "Bloodline", "rating": 3},
+            {"title": "Kang Mak from Pee Mak"}, # Tidak Ada
+            {"title": "Bolehkah Sekali Ini Saja Menangis"}, # Tidak Ada
         ]
-    },
-    "U013": {
-        "name": "Wahyu Andika",
-        "age": 38, "gender": "Male", "city": "Pekanbaru",
-        "preferred_genres": ["Sports Movies", "Documentaries"],
-        "watch_history": [
-            {"title": "The Last Dance", "rating": 5},
-            {"title": "Formula 1: Drive to Survive", "rating": 5},
-            {"title": "Sunderland 'Til I Die", "rating": 4},
-            {"title": "Losers", "rating": 4},
-        ]
-    },
+    }
 }
 
 # ─────────────────────────────────────────────
 #  DATA LOADING & PREPROCESSING
 # ─────────────────────────────────────────────
+
+def clean_names(text):
+    if isinstance(text, str):
+        text = text.lower()
+        names = text.split(',')
+        return " ".join([n.replace(" ", "") for n in names])
+    return ""
+    
+def clean_genres(genre_string):
+    if pd.isna(genre_string) or not isinstance(genre_string, str):
+        return []
+    # Ganti '&' dan ',' dengan spasi, ubah ke lowercase
+    cleaned = genre_string.lower().replace('&', ' ').replace(',', ' ')
+    words = cleaned.split()
+    # Buang kata-kata sampah yang berulang
+    stop_words = {'tv', 'shows', 'movies', 'show', 'movie'}
+    filtered_words = [w for w in words if w not in stop_words]
+    return filtered_words
+
 @st.cache_data(show_spinner="📥 Memuat dataset Netflix...")
 def load_data():
     try:
@@ -286,31 +301,19 @@ def load_data():
         st.error("❌ File `netflix_titles.csv` tidak ditemukan. Letakkan file CSV di direktori yang sama dengan `app.py`.")
         st.stop()
 
-    features = ['title', 'director', 'cast', 'country', 'listed_in', 'description']
+    features = ['title', 'rating', 'listed_in', 'description', 'director', 'cast']
     for f in features:
         df[f] = df[f].fillna('')
-
-    def clean_names(text):
-        if isinstance(text, str):
-            text = text.lower()
-            names = text.split(',')
-            return " ".join([n.replace(" ", "") for n in names])
-        return ""
-
+    
+    # Gabungkan semua fitur menjadi satu string untuk setiap film
     df['cast_cleaned'] = df['cast'].apply(clean_names)
     df['director_cleaned'] = df['director'].apply(clean_names)
-
+    df['listed_in_cleaned'] = df['listed_in'].apply(clean_genres)
     def combine_features(row):
-        return (str(row['title']) + " " +
-                row['director_cleaned'] + " " +
-                row['cast_cleaned'] + " " +
-                str(row['country']) + " " +
-                str(row['listed_in']) + " " +
-                str(row['description']))
+        return " ".join([str(row['title']), str(row['rating']), " ".join(row['listed_in_cleaned']), str(row['description']), str(row['director_cleaned']), str(row['cast_cleaned'])])
 
     df['combined_features'] = df.apply(combine_features, axis=1).str.lower()
     return df
-
 
 @st.cache_resource(show_spinner="🤖 Membuat SBERT embeddings (tunggu sebentar)...")
 def build_embeddings(texts):
@@ -319,53 +322,116 @@ def build_embeddings(texts):
     embeddings = model.encode(texts, show_progress_bar=False, batch_size=64)
     return embeddings
 
+# 2. Fungsi Cek Semua Genre Unik di Dataset
+def get_all_unique_genres(dataframe):
+    unique_genres = set()
+    for listed_in in dataframe['listed_in'].dropna():
+        unique_genres.update(clean_genres(listed_in))
+    return sorted(list(unique_genres))
 
-def get_recommendations(user_history, df, embeddings, top_n=10):
-    indices = []
-    for item in user_history:
-        match = df[df['title'].str.lower() == item['title'].lower()]
-        if not match.empty:
-            indices.append(match.index[0])
+def get_max_allowed_rating(age):
+    if age < 7: return ['G', 'TV-Y', 'TV-G']
+    elif age < 13: return ['G', 'TV-Y', 'TV-G', 'PG', 'TV-Y7', 'TV-Y7-FV', 'TV-PG']
+    elif age < 14: return ['G', 'TV-Y', 'TV-G', 'PG', 'TV-Y7', 'TV-Y7-FV', 'TV-PG', 'PG-13']
+    elif age < 17: return ['G', 'TV-Y', 'TV-G', 'PG', 'TV-Y7', 'TV-Y7-FV', 'TV-PG', 'PG-13', 'TV-14']
+    else: return ['G', 'TV-Y', 'TV-G', 'PG', 'TV-Y7', 'TV-Y7-FV', 'TV-PG', 'PG-13', 'TV-14', 'R', 'NC-17', 'TV-MA', 'NR', 'UR']
 
-    if not indices:
-        return pd.DataFrame()
 
-    user_vecs = embeddings[indices]
-    profile_vec = np.mean(user_vecs, axis=0).reshape(1, -1)
-    scores = cosine_similarity(profile_vec, embeddings)[0]
+# 4. Fungsi Utama Rekomendasi (Mengatasi Cold-Start & Fallback)
+def get_recommendations(user_data, df_catalog, embeddings_matrix, top_n=5):
+    age = user_data.get('age', 18)
+    watch_history = user_data.get('watch_history', [])
+    preferred_genres = user_data.get('preferred_genres', [])
+    
+    allowed_ratings = get_max_allowed_rating(age)
+    df_scores = df_catalog.copy()
+    df_scores['rating'] = df_scores['rating'].fillna('NR')
+    df_scores = df_scores[df_scores['rating'].isin(allowed_ratings)].reset_index(drop=True)
+    
+    valid_indices = df_catalog[df_catalog['rating'].fillna('NR').isin(allowed_ratings)].index
+    filtered_embeddings = embeddings_matrix[valid_indices]
+    
+    catalog_genres = get_all_unique_genres(df_catalog)
+    clean_user_pref = [w for genre in preferred_genres for w in clean_genres(genre) if w in catalog_genres]
 
-    df_scores = df.copy()
+    history_titles = [m['title'].lower() for m in watch_history]
+    history_indices_in_filtered = df_scores[df_scores['title'].str.lower().isin(history_titles)].index.tolist()
+    
+    scores = np.zeros(len(df_scores))
+    if not watch_history or not history_indices_in_filtered:
+        if clean_user_pref:
+            pref_text = " ".join(clean_user_pref)
+            user_profile_vector = model.encode([pref_text]).reshape(1, -1)
+            scores = cosine_similarity(user_profile_vector, filtered_embeddings)[0]
+        else:
+            scores = np.full(len(df_scores), 0.1000)
+    else:
+        user_vecs = filtered_embeddings[history_indices_in_filtered]
+        user_profile_vector = np.mean(user_vecs, axis=0).reshape(1, -1)
+        scores = cosine_similarity(user_profile_vector, filtered_embeddings)[0]
+
     df_scores['similarity_score'] = scores
-    df_filtered = df_scores.drop(index=indices)
-    return df_filtered.sort_values('similarity_score', ascending=False).head(top_n)
+    
+    df_final = df_scores[~df_scores['title'].str.lower().isin(history_titles)]
+    return df_final.sort_values('similarity_score', ascending=False).head(top_n)
 
-
-def evaluate_user(user_history, df, embeddings, k=5):
-    results = {"precision": [], "recall": [], "f1": []}
-    for item in user_history:
-        match = df[df['title'].str.lower() == item['title'].lower()]
-        if match.empty:
-            continue
-        idx = match.index[0]
-        target_genres = df.loc[idx, 'listed_in']
-        scores = cosine_similarity(embeddings[idx].reshape(1, -1), embeddings)[0]
-        top_idx = np.argsort(scores)[::-1][1:k+1]
-        recs = df.iloc[top_idx]
-
-        def relevance(rec_genres):
-            t = set(g.strip().lower() for g in target_genres.split(','))
-            r = set(g.strip().lower() for g in rec_genres.split(','))
-            return 1 if t & r else 0
-
-        y_true = [relevance(row['listed_in']) for _, row in recs.iterrows()]
-        y_pred = [1] * k
-        results["precision"].append(precision_score(y_true, y_pred, zero_division=0))
-        results["recall"].append(recall_score(y_true, y_pred, zero_division=0))
-        results["f1"].append(f1_score(y_true, y_pred, zero_division=0))
-
-    if not results["precision"]:
-        return None
-    return {k: round(float(np.mean(v)), 3) for k, v in results.items()}
+# 5. Fungsi Evaluasi Metrik
+def evaluate_recommendations(recommendations, user_data, df_catalog):
+    if recommendations.empty:
+        return {"avg_similarity": 0, "f1_score": 0, "hit_rate": 0}
+    
+    avg_sim = recommendations['similarity_score'].mean()
+    
+    # Masukkan target kata dari preferred_genres
+    user_target_words = set()
+    for g in user_data.get('preferred_genres', []):
+        user_target_words.update(clean_genres(g))
+    
+    # TAMBAHAN: Ekstrak juga director, cast, dan genre dari watch history user
+    for item in user_data.get('watch_history', []):
+        match = df_catalog[df_catalog['title'].str.lower() == item['title'].lower()]
+        if not match.empty:
+            row = match.iloc[0]
+            user_target_words.update(clean_genres(row['listed_in']))
+            
+            if row['director']:
+                user_target_words.update(row['director'].lower().replace(',', ' ').split())
+            
+            if row['cast']:
+                user_target_words.update(row['cast'].lower().replace(',', ' ').split())
+            
+    hits = 0
+    f1_scores = []
+    
+    for _, row in recommendations.iterrows():
+        # Gabungkan kata dari genre, director, dan cast pada film rekomendasi untuk dicek kecocokannya
+        rec_words = set(clean_genres(row['listed_in']))
+        if row['director']:
+            rec_words.update(row['director'].lower().replace(',', ' ').split())
+        if row['cast']:
+            rec_words.update(row['cast'].lower().replace(',', ' ').split())
+        
+        intersection = user_target_words.intersection(rec_words)
+        
+        if len(intersection) > 0:
+            hits += 1
+            
+        if len(rec_words) == 0 or len(user_target_words) == 0:
+            f1 = 0
+        else:
+            precision = len(intersection) / len(rec_words)
+            recall = len(intersection) / len(user_target_words)
+            f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+        f1_scores.append(f1)
+        
+    hit_rate = 1 if hits > 0 else 0
+    avg_f1 = np.mean(f1_scores)
+    
+    return {
+        "avg_similarity": round(float(avg_sim), 4),
+        "f1_score": round(float(avg_f1), 4),
+        "hit_rate": hit_rate
+    }
 
 
 # ─────────────────────────────────────────────
@@ -374,14 +440,14 @@ def evaluate_user(user_history, df, embeddings, k=5):
 with st.sidebar:
     st.markdown("## 👤 Pilih Active User")
 
-    user_labels = {uid: f"{uid} – {info['name']}" for uid, info in USERS.items()}
+    user_labels = {uid: f"{uid} - {info['name']}" for uid, info in USERS.items()}
     selected_uid = st.selectbox(
         "User ID",
         options=list(USERS.keys()),
         format_func=lambda uid: user_labels[uid]
     )
 
-    top_n = st.slider("Jumlah rekomendasi", min_value=3, max_value=20, value=8)
+    top_n = st.slider("Jumlah rekomendasi", min_value=3, max_value=8, value=5)
 
     st.markdown("---")
     st.markdown("**Daftar semua User ID:**")
@@ -393,9 +459,21 @@ with st.sidebar:
 # ─────────────────────────────────────────────
 #  LOAD DATA  &  EMBEDDINGS
 # ─────────────────────────────────────────────
+
+# Cache data dan embeddings agar tidak perlu dihitung ulang setiap interaksi user
 df = load_data()
-embeddings = build_embeddings(df['combined_features'].tolist())
+
+# Ambil data user yang dipilih
 user = USERS[selected_uid]
+
+# Bangun matriks embedding untuk seluruh katalog (sekali saja, cached)
+embeddings = build_embeddings(df['combined_features'].tolist())
+
+# ─────────────────────────────────────────────
+#  FUNGSI REKOMENDASI & EVALUASI
+# ─────────────────────────────────────────────
+reccommendations_df = get_recommendations(user, df, embeddings, top_n=top_n)
+metrics = evaluate_recommendations(reccommendations_df, user, df)
 
 # ─────────────────────────────────────────────
 #  TABS
@@ -411,8 +489,7 @@ with tab1:
         st.markdown(f"""
         <div class="user-card">
           <b>{user['name']}</b><br>
-          🆔 {selected_uid} &nbsp;|&nbsp; 🎂 {user['age']} thn &nbsp;|&nbsp; {user['gender']}<br>
-          🌆 {user['city']}<br><br>
+          🆔 {selected_uid} &nbsp;|&nbsp; 🎂 {user['age']} thn &nbsp;|&nbsp;
           <span style="color:#aaa; font-size:.82rem;">Genre Favorit:</span><br>
           {"".join(f'<span class="history-pill">🏷️ {g}</span>' for g in user["preferred_genres"])}
         </div>
@@ -420,30 +497,30 @@ with tab1:
 
         st.markdown('<div class="section-title">Riwayat Tontonan</div>', unsafe_allow_html=True)
         for movie in user['watch_history']:
-            stars = "⭐" * movie['rating']
+            # Ambil rating asli dari catalog jika ada, atau fallback ke teks default
+            match = df[df['title'].str.lower() == movie['title'].lower()]
+            rating_content = match.iloc[0]['rating'] if not match.empty else "N/A"
+            
             st.markdown(f"""
             <div class="user-card" style="padding:10px 16px;">
               🎥 <b>{movie['title']}</b><br>
-              <span style="color:#f5c518;">{stars}</span>
-              <span style="color:#888; font-size:.78rem;"> ({movie['rating']}/5)</span>
+              <span style="color:#888; font-size:.78rem;"> Rating Konten: {rating_content}</span>
             </div>
             """, unsafe_allow_html=True)
 
     with col_right:
         st.markdown('<div class="section-title">🔎 Rekomendasi Konten</div>', unsafe_allow_html=True)
 
-        with st.spinner("Menghitung profil user dan mencari rekomendasi..."):
-            recs = get_recommendations(user['watch_history'], df, embeddings, top_n=top_n)
-
-        if recs.empty:
-            st.warning("Tidak ada film dari riwayat user yang cocok dengan katalog. Pastikan judul film ada di netflix_titles.csv.")
+        # Cek apakah hasil rekomendasi kosong
+        if reccommendations_df.empty:
+            st.warning("Tidak ada film yang cocok dengan profil user atau batasan usia.")
         else:
-            for i, (_, row) in enumerate(recs.iterrows(), 1):
+            for i, (_, row) in enumerate(reccommendations_df.iterrows(), 1):
                 score_pct = f"{row['similarity_score']*100:.1f}%"
                 st.markdown(f"""
                 <div class="rec-card">
                   <div style="float:right"><span class="score-badge">🎯 {score_pct}</span></div>
-                  <div class="rec-title">#{i} &nbsp;{row['title']}</div>
+                  <div class="rec-title">#{i} &nbsp;{row['title']} <span style="font-size:0.8rem; color:#e50914;">({row['rating']})</span></div>
                   <div class="rec-genre">🏷️ {row['listed_in']}</div>
                   <div class="rec-desc">{row['description'][:220]}{"..." if len(row['description'])>220 else ""}</div>
                 </div>
@@ -453,27 +530,25 @@ with tab1:
 # ────────── TAB 2 : EVALUASI ──────────
 with tab2:
     st.markdown('<div class="section-title">📐 Metrik Evaluasi untuk User Aktif</div>', unsafe_allow_html=True)
-    st.info("Evaluasi menggunakan **genre overlap** sebagai *ground truth*: rekomendasi dianggap relevan jika memiliki setidaknya satu genre yang sama dengan film di riwayat user.")
+    st.info("Evaluasi menggunakan **genre, director, dan cast overlap** sebagai *ground truth* untuk mengukur relevansi konten yang direkomendasikan.")
 
-    with st.spinner("Menghitung Precision, Recall, F1-Score..."):
-        metrics = evaluate_user(user['watch_history'], df, embeddings, k=5)
-
-    if metrics:
+    # Gunakan variabel 'metrics' dan 'recommendations_df' yang sudah dihitung di luar tab
+    if metrics and not reccommendations_df.empty:
         c1, c2, c3 = st.columns(3)
         with c1:
             st.markdown(f"""<div class="metric-box">
-              <div class="val">{metrics['precision']:.2f}</div>
-              <div class="lbl">Mean Precision@5</div></div>""", unsafe_allow_html=True)
+              <div class="val">{metrics['hit_rate']}</div>
+              <div class="lbl">Hit Rate (Akurasi Rekomendasi)</div></div>""", unsafe_allow_html=True)
         with c2:
             st.markdown(f"""<div class="metric-box">
-              <div class="val">{metrics['recall']:.2f}</div>
-              <div class="lbl">Mean Recall@5</div></div>""", unsafe_allow_html=True)
+              <div class="val">{metrics['avg_similarity']:.4f}</div>
+              <div class="lbl">Avg Cosine Similarity</div></div>""", unsafe_allow_html=True)
         with c3:
             st.markdown(f"""<div class="metric-box">
-              <div class="val">{metrics['f1']:.2f}</div>
-              <div class="lbl">Mean F1-Score@5</div></div>""", unsafe_allow_html=True)
+              <div class="val">{metrics['f1_score']:.4f}</div>
+              <div class="lbl">Mean F1-Score (Overlap)</div></div>""", unsafe_allow_html=True)
     else:
-        st.warning("Tidak dapat menghitung metrik – judul film di riwayat user tidak ditemukan di katalog.")
+        st.warning("Tidak dapat menghitung metrik - Data rekomendasi kosong atau riwayat user tidak ditemukan di katalog.")
 
     st.markdown("---")
     st.markdown('<div class="section-title">📖 Penjelasan Metrik</div>', unsafe_allow_html=True)
@@ -482,28 +557,25 @@ with tab2:
     with col_a:
         st.markdown("""
         <div class="info-box">
-          <h4>🎯 Precision@K</h4>
-          Dari <b>K</b> item yang direkomendasikan, berapa persentase yang benar-benar relevan?<br><br>
-          <code>Precision@K = Relevan ∩ Direkomendasikan / K</code><br><br>
-          Semakin tinggi = semakin sedikit rekomendasi "tidak berguna" yang diberikan ke user.
+          <h4>🎯 Hit Rate</h4>
+          Apakah sistem berhasil memberikan **minimal 1 item** yang relevan dari Top-N rekomendasi?<br><br>
+          <code>1 = Sukses (Ada Overlap)</code><br>
+          <code>0 = Gagal (Tidak ada Overlap sama sekali)</code>
         </div>
         """, unsafe_allow_html=True)
     with col_b:
         st.markdown("""
         <div class="info-box">
-          <h4>📡 Recall@K</h4>
-          Dari semua item relevan yang ada, berapa yang berhasil <b>ditemukan</b> oleh sistem dalam Top-K?<br><br>
-          <code>Recall@K = Relevan ∩ Direkomendasikan / Total Relevan</code><br><br>
-          Nilai Recall = Precision pada Top-K karena total relevan tidak dibatasi.
+          <h4>📡 Avg Cosine Similarity</h4>
+          Mengukur seberapa dekat secara semantik (*SBERT embedding*) item yang direkomendasikan dengan preferensi gabungan user.<br><br>
+          Semakin mendekati 1.0, berarti kualitas kemiripan teks/sinopsis film semakin tinggi.
         </div>
         """, unsafe_allow_html=True)
     with col_c:
         st.markdown("""
         <div class="info-box">
-          <h4>⚖️ F1-Score@K</h4>
-          Rata-rata harmonik antara Precision dan Recall.<br><br>
-          <code>F1 = 2 × (P × R) / (P + R)</code><br><br>
-          Memberikan skor tunggal yang menyeimbangkan keduanya. Berguna sebagai metrik utama evaluasi.
+          <h4>⚖️ F1-Score (Feature Overlap)</h4>
+          Rata-rata harmonik antara presisi dan recall dari kemunculan kata kunci target (genre, sutradara, aktor) di film rekomendasi dibandingkan dengan riwayat tontonan user.
         </div>
         """, unsafe_allow_html=True)
 
