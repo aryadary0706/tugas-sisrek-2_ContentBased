@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.metrics import precision_score, recall_score, f1_score
-import re
+from sentence_transformers import SentenceTransformer
 
 # ─────────────────────────────────────────────
 #  PAGE CONFIG
@@ -24,7 +23,7 @@ body { font-family: 'Segoe UI', sans-serif; }
 
 /* ── top banner ── */
 .hero {
-    background: linear-gradient(135deg, #141414 0%, #e50914 100%);
+    background: #d13e3e;
     border-radius: 16px;
     padding: 36px 40px;
     margin-bottom: 28px;
@@ -119,14 +118,11 @@ body { font-family: 'Segoe UI', sans-serif; }
 # ─────────────────────────────────────────────
 st.markdown("""
 <div class="hero">
-  <h1>🎬 Netflix Recommender System</h1>
-  <p>Content-Based Filtering · SBERT Embeddings (all-MiniLM-L6-v2) · Cosine Similarity</p>
+  <h1>Tugas Kelompok 2</h1>
+  <p>Content-Based Filtering menggunakan SBERT Embeddings (all-MiniLM-L6-v2) · Evaluasi: Hit Rate · Precision@K · F1 · DCG · NDCG</p>
 </div>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-#  SYNTHETIC USER DATA  (10–15 users)
-# ─────────────────────────────────────────────
 # ─────────────────────────────────────────────
 #  SYNTHETIC USER DATA (12 Variasi Kasus Ekstrem)
 # ─────────────────────────────────────────────
@@ -315,11 +311,13 @@ def load_data():
     df['combined_features'] = df.apply(combine_features, axis=1).str.lower()
     return df
 
+@st.cache_resource
+def load_model():
+    return SentenceTransformer('all-MiniLM-L6-v2')
+
 @st.cache_resource(show_spinner="🤖 Membuat SBERT embeddings (tunggu sebentar)...")
-def build_embeddings(texts):
-    from sentence_transformers import SentenceTransformer
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    embeddings = model.encode(texts, show_progress_bar=False, batch_size=64)
+def build_embeddings(texts, _model):
+    embeddings = _model.encode(texts, show_progress_bar=False, batch_size=64)
     return embeddings
 
 # 2. Fungsi Cek Semua Genre Unik di Dataset
@@ -338,7 +336,7 @@ def get_max_allowed_rating(age):
 
 
 # 4. Fungsi Utama Rekomendasi (Mengatasi Cold-Start & Fallback)
-def get_recommendations(user_data, df_catalog, embeddings_matrix, top_n=5):
+def get_recommendations(user_data, df_catalog, embeddings_matrix):
     age = user_data.get('age', 18)
     watch_history = user_data.get('watch_history', [])
     preferred_genres = user_data.get('preferred_genres', [])
@@ -373,64 +371,94 @@ def get_recommendations(user_data, df_catalog, embeddings_matrix, top_n=5):
     df_scores['similarity_score'] = scores
     
     df_final = df_scores[~df_scores['title'].str.lower().isin(history_titles)]
-    return df_final.sort_values('similarity_score', ascending=False).head(top_n)
+    return df_final.sort_values('similarity_score', ascending=False).head(5)
 
 # 5. Fungsi Evaluasi Metrik
 def evaluate_recommendations(recommendations, user_data, df_catalog):
     if recommendations.empty:
-        return {"avg_similarity": 0, "f1_score": 0, "hit_rate": 0}
-    
-    avg_sim = recommendations['similarity_score'].mean()
-    
-    # Masukkan target kata dari preferred_genres
+        return { "hit_rate": 0, "f1_score": 0, "precision_at_k": 0, "dcg": 0.0, "ndcg": 0.0, "relevance_scores": [], "ideal_relevance_scores": [] }
+
+    # ── Bangun kumpulan kata target dari preferred genres + watch history ──
     user_target_words = set()
     for g in user_data.get('preferred_genres', []):
         user_target_words.update(clean_genres(g))
-    
-    # TAMBAHAN: Ekstrak juga director, cast, dan genre dari watch history user
+
     for item in user_data.get('watch_history', []):
         match = df_catalog[df_catalog['title'].str.lower() == item['title'].lower()]
         if not match.empty:
             row = match.iloc[0]
             user_target_words.update(clean_genres(row['listed_in']))
-            
             if row['director']:
                 user_target_words.update(row['director'].lower().replace(',', ' ').split())
-            
             if row['cast']:
                 user_target_words.update(row['cast'].lower().replace(',', ' ').split())
-            
+
     hits = 0
     f1_scores = []
-    
+    relevance_scores = []   # Graded relevance per posisi (0-3 scale)
+
     for _, row in recommendations.iterrows():
-        # Gabungkan kata dari genre, director, dan cast pada film rekomendasi untuk dicek kecocokannya
         rec_words = set(clean_genres(row['listed_in']))
         if row['director']:
             rec_words.update(row['director'].lower().replace(',', ' ').split())
         if row['cast']:
             rec_words.update(row['cast'].lower().replace(',', ' ').split())
-        
+
         intersection = user_target_words.intersection(rec_words)
-        
+
+        # ── Hit ──
         if len(intersection) > 0:
             hits += 1
-            
+
+        # ── F1 ──
         if len(rec_words) == 0 or len(user_target_words) == 0:
-            f1 = 0
+            f1 = 0.0
         else:
             precision = len(intersection) / len(rec_words)
-            recall = len(intersection) / len(user_target_words)
-            f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+            recall    = len(intersection) / len(user_target_words)
+            f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
         f1_scores.append(f1)
-        
+
+        # ── Graded Relevance (0-3) berdasarkan overlap ratio ──
+        if len(user_target_words) == 0:
+            rel = 0
+        else:
+            overlap_ratio = len(intersection) / len(user_target_words)
+            if overlap_ratio >= 0.15:
+                rel = 3
+            elif overlap_ratio >= 0.08:
+                rel = 2
+            elif overlap_ratio > 0:
+                rel = 1
+            else:
+                rel = 0
+        relevance_scores.append(rel)
+
+    k = len(relevance_scores)
+
+    # ── Precision@K ──
+    precision_at_k = hits / k if k > 0 else 0.0
+
+    # ── DCG  (formula 9 dari slide: rel_i / log2(i+1)) ──
+    dcg = sum(rel / np.log2(i + 2) for i, rel in enumerate(relevance_scores))
+
+    # ── IDCG – ideal ordering (sort descending) ──
+    ideal_rels = sorted(relevance_scores, reverse=True)
+    idcg = sum(rel / np.log2(i + 2) for i, rel in enumerate(ideal_rels))
+
+    # ── NDCG ──
+    ndcg = (dcg / idcg) if idcg > 0 else 0.0
+
     hit_rate = 1 if hits > 0 else 0
-    avg_f1 = np.mean(f1_scores)
-    
+
     return {
-        "avg_similarity": round(float(avg_sim), 4),
-        "f1_score": round(float(avg_f1), 4),
-        "hit_rate": hit_rate
+        "hit_rate":              hit_rate,
+        "f1_score":              round(float(np.mean(f1_scores)), 4),
+        "precision_at_k":        round(float(precision_at_k), 4),
+        "dcg":                   round(float(dcg), 4),
+        "ndcg":                  round(float(ndcg), 4),
+        "relevance_scores":      relevance_scores,
+        "ideal_relevance_scores": ideal_rels,
     }
 
 
@@ -439,22 +467,26 @@ def evaluate_recommendations(recommendations, user_data, df_catalog):
 # ─────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 👤 Pilih Active User")
+    
+    if "selected_uid" not in st.session_state:
+        st.session_state.selected_uid = "U001"
 
-    user_labels = {uid: f"{uid} - {info['name']}" for uid, info in USERS.items()}
-    selected_uid = st.selectbox(
-        "User ID",
-        options=list(USERS.keys()),
-        format_func=lambda uid: user_labels[uid]
-    )
-
-    top_n = st.slider("Jumlah rekomendasi", min_value=3, max_value=8, value=5)
-
+    st.markdown("Klik pada nama user di bawah untuk mengganti profil aktif:")
     st.markdown("---")
-    st.markdown("**Daftar semua User ID:**")
+    
     for uid, info in USERS.items():
-        marker = "🟥" if uid == selected_uid else "⚪"
-        st.markdown(f"{marker} `{uid}` {info['name']}")
+        is_active = (uid == st.session_state.selected_uid)
+        marker = "🟥" if is_active else "⚪"
+        
+        button_label = f"{marker} {uid} — {info['name']}"
+        
+        btn_type = "primary" if is_active else "secondary"
+        
+        if st.button(button_label, key=f"btn_{uid}", use_container_width=True, type=btn_type):
+            st.session_state.selected_uid = uid
+            st.rerun() 
 
+    selected_uid = st.session_state.selected_uid
 
 # ─────────────────────────────────────────────
 #  LOAD DATA  &  EMBEDDINGS
@@ -462,17 +494,18 @@ with st.sidebar:
 
 # Cache data dan embeddings agar tidak perlu dihitung ulang setiap interaksi user
 df = load_data()
+model = load_model()
 
 # Ambil data user yang dipilih
 user = USERS[selected_uid]
 
 # Bangun matriks embedding untuk seluruh katalog (sekali saja, cached)
-embeddings = build_embeddings(df['combined_features'].tolist())
+embeddings = build_embeddings(df['combined_features'].tolist(), model)
 
 # ─────────────────────────────────────────────
 #  FUNGSI REKOMENDASI & EVALUASI
 # ─────────────────────────────────────────────
-reccommendations_df = get_recommendations(user, df, embeddings, top_n=top_n)
+reccommendations_df = get_recommendations(user, df, embeddings)
 metrics = evaluate_recommendations(reccommendations_df, user, df)
 
 # ─────────────────────────────────────────────
@@ -530,54 +563,120 @@ with tab1:
 # ────────── TAB 2 : EVALUASI ──────────
 with tab2:
     st.markdown('<div class="section-title">📐 Metrik Evaluasi untuk User Aktif</div>', unsafe_allow_html=True)
-    st.info("Evaluasi menggunakan **genre, director, dan cast overlap** sebagai *ground truth* untuk mengukur relevansi konten yang direkomendasikan.")
+    st.info(
+        "Evaluasi menggunakan **genre, director, dan cast overlap** sebagai *ground truth*. "
+        "Relevansi dinilai dengan skala **0-3** (graded relevance), sesuai kerangka **DCG/NDCG** dari Top-N evaluation."
+    )
 
-    # Gunakan variabel 'metrics' dan 'recommendations_df' yang sudah dihitung di luar tab
     if metrics and not reccommendations_df.empty:
-        c1, c2, c3 = st.columns(3)
+        # ── Baris 1: 4 metrik utama ──
+        c1, c2, c3, c4 = st.columns(4)
         with c1:
+            hr_label = "✅ Hit" if metrics['hit_rate'] == 1 else "❌ Miss"
             st.markdown(f"""<div class="metric-box">
               <div class="val">{metrics['hit_rate']}</div>
-              <div class="lbl">Hit Rate (Akurasi Rekomendasi)</div></div>""", unsafe_allow_html=True)
+              <div class="lbl">Hit Rate<br><span style="font-size:.75rem;color:#888;">{hr_label}</span></div>
+            </div>""", unsafe_allow_html=True)
         with c2:
             st.markdown(f"""<div class="metric-box">
-              <div class="val">{metrics['avg_similarity']:.4f}</div>
-              <div class="lbl">Avg Cosine Similarity</div></div>""", unsafe_allow_html=True)
+              <div class="val">{metrics['precision_at_k']:.4f}</div>
+              <div class="lbl">Precision@K<br><span style="font-size:.75rem;color:#888;">K = {len(metrics['relevance_scores'])}</span></div>
+            </div>""", unsafe_allow_html=True)
         with c3:
             st.markdown(f"""<div class="metric-box">
               <div class="val">{metrics['f1_score']:.4f}</div>
-              <div class="lbl">Mean F1-Score (Overlap)</div></div>""", unsafe_allow_html=True)
+              <div class="lbl">Mean F1-Score<br><span style="font-size:.75rem;color:#888;">Overlap Fitur</span></div>
+            </div>""", unsafe_allow_html=True)
+        with c4:
+            st.markdown(f"""<div class="metric-box">
+              <div class="val">{metrics['ndcg']:.4f}</div>
+              <div class="lbl">NDCG<br><span style="font-size:.75rem;color:#888;">Normalized DCG</span></div>
+            </div>""", unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # ── Baris 2: DCG detail + tabel relevance ──
+        col_dcg, col_tbl = st.columns([1, 2], gap="large")
+
+        with col_dcg:
+            st.markdown(f"""<div class="metric-box" style="margin-top:4px;">
+              <div class="val">{metrics['dcg']:.4f}</div>
+              <div class="lbl">DCG (Discounted Cumulative Gain)<br>
+              <span style="font-size:.75rem;color:#888;">IDCG = {sum(r / np.log2(i+2) for i,r in enumerate(metrics['ideal_relevance_scores'])):.4f}</span>
+              </div>
+            </div>""", unsafe_allow_html=True)
+
+        with col_tbl:
+            rel_data = []
+            for i, (_, row) in enumerate(reccommendations_df.iterrows()):
+                rel  = metrics['relevance_scores'][i]
+                disc = round(rel / np.log2(i + 2), 4)
+                stars = "⭐" * rel + "" * (3 - rel)
+                rel_data.append({
+                    "Pos": f"#{i+1}",
+                    "Judul Film": row['title'][:35] + ("…" if len(row['title']) > 35 else ""),
+                    "rel_i (0-3)": f"{rel}  {stars}",
+                    "log₂(i+1)": round(np.log2(i + 2), 3),
+                    "rel_i / log₂(i+1)": disc,
+                })
+            st.markdown("**Detail perhitungan DCG per posisi:**")
+            st.dataframe(pd.DataFrame(rel_data), use_container_width=True, hide_index=True)
+
     else:
-        st.warning("Tidak dapat menghitung metrik - Data rekomendasi kosong atau riwayat user tidak ditemukan di katalog.")
+        st.warning("Tidak dapat menghitung metrik — Data rekomendasi kosong atau riwayat user tidak ditemukan di katalog.")
 
     st.markdown("---")
     st.markdown('<div class="section-title">📖 Penjelasan Metrik</div>', unsafe_allow_html=True)
 
-    col_a, col_b, col_c = st.columns(3)
+    col_a, col_b = st.columns(2)
     with col_a:
         st.markdown("""
         <div class="info-box">
           <h4>🎯 Hit Rate</h4>
-          Apakah sistem berhasil memberikan **minimal 1 item** yang relevan dari Top-N rekomendasi?<br><br>
-          <code>1 = Sukses (Ada Overlap)</code><br>
-          <code>0 = Gagal (Tidak ada Overlap sama sekali)</code>
+          Apakah sistem berhasil memberikan <b>minimal 1 item relevan</b> dalam Top-N rekomendasi?<br><br>
+          <code>1 = Sukses (ada overlap fitur)</code><br>
+          <code>0 = Gagal (tidak ada overlap sama sekali)</code>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="info-box">
+          <h4>📊 DCG — Discounted Cumulative Gain</h4>
+          Item relevan yang muncul di <b>posisi lebih atas</b> diberi bobot lebih tinggi.
+          Relevansi di-diskon secara logaritmik sesuai posisinya:<br><br>
+          <code>DCG = Σ rel_i / log₂(i+1)</code><br><br>
+          Semakin tinggi nilai DCG, semakin baik urutan rekomendasi sistem.
         </div>
         """, unsafe_allow_html=True)
     with col_b:
         st.markdown("""
         <div class="info-box">
-          <h4>📡 Avg Cosine Similarity</h4>
-          Mengukur seberapa dekat secara semantik (*SBERT embedding*) item yang direkomendasikan dengan preferensi gabungan user.<br><br>
-          Semakin mendekati 1.0, berarti kualitas kemiripan teks/sinopsis film semakin tinggi.
+          <h4>🎯 Precision@K</h4>
+          Proporsi item relevan dari seluruh K item yang direkomendasikan.<br><br>
+          <code>Precision@K = Jumlah Hit / K</code><br><br>
+          Berbeda dengan Hit Rate (biner), Precision@K mengukur <b>seberapa banyak</b> item relevan yang berhasil ditampilkan.
         </div>
         """, unsafe_allow_html=True)
-    with col_c:
+        st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("""
         <div class="info-box">
-          <h4>⚖️ F1-Score (Feature Overlap)</h4>
-          Rata-rata harmonik antara presisi dan recall dari kemunculan kata kunci target (genre, sutradara, aktor) di film rekomendasi dibandingkan dengan riwayat tontonan user.
+          <h4>🏆 NDCG — Normalized DCG</h4>
+          DCG dinormalisasi terhadap nilai DCG ideal (IDCG), yaitu kondisi semua item relevan diurutkan sempurna dari atas.<br><br>
+          <code>NDCG = DCG / IDCG</code><br><br>
+          Nilai mendekati <b>1.0</b> berarti urutan rekomendasi sangat mendekati urutan ideal.
+          Ini adalah metrik Top-N paling komprehensif sesuai materi kuliah.
         </div>
         """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("""
+    <div class="info-box">
+      <h4>⚖️ F1-Score (Feature Overlap)</h4>
+      Rata-rata harmonik antara <b>precision</b> dan <b>recall</b> dari kemunculan kata kunci target
+      (genre, sutradara, aktor) di setiap film rekomendasi dibandingkan profil user.<br><br>
+      F1-Score melengkapi NDCG karena mengukur kualitas konten secara keseluruhan, bukan hanya urutan ranking.
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ────────── TAB 3 : ABOUT ──────────
@@ -594,12 +693,12 @@ with tab3:
           <b>Movies:</b> {len(df[df['type']=='Movie']):,} judul<br>
           <b>TV Shows:</b> {len(df[df['type']=='TV Show']):,} judul<br><br>
           <b>Fitur utama yang digunakan:</b><br>
-          • <code>title</code> – Judul konten<br>
-          • <code>director</code> – Nama sutradara<br>
-          • <code>cast</code> – Daftar pemain<br>
-          • <code>country</code> – Negara produksi<br>
-          • <code>listed_in</code> – Kategori/genre<br>
-          • <code>description</code> – Sinopsis singkat<br><br>
+            <code>title</code> - Judul konten<br>
+            <code>rating</code> - Rating umur konten<br>
+            <code>director</code> - Nama sutradara<br>
+            <code>cast</code> - Daftar pemain<br>
+            <code>listed_in</code> - Kategori/genre<br>
+            <code>description</code> - Deskripsi Film/Series<br><br>
           Semua fitur teks digabung menjadi satu <b>metadata soup</b> sebelum di-encode.
         </div>
         """, unsafe_allow_html=True)
@@ -608,10 +707,10 @@ with tab3:
         st.markdown("""
         <div class="info-box">
           <h4>Pipeline Preprocessing</h4>
-          1. <b>Imputasi NaN</b> – Nilai kosong diisi string kosong <code>''</code><br>
-          2. <b>Normalisasi nama</b> – Nama aktor/sutradara: lowercase + hapus spasi antar kata (mis. <i>"kirsten johnson" → "kirstenjohnson"</i>) agar model tidak memisahkan sebagai token berbeda<br>
-          3. <b>Metadata Soup</b> – Semua kolom digabungkan menjadi satu string teks panjang<br>
-          4. <b>Lowercase</b> – Seluruh teks dikonversi ke huruf kecil untuk konsistensi embedding
+          1. <b>Imputasi NaN</b> - Nilai kosong diisi string kosong <code>''</code><br>
+          2. <b>Normalisasi nama</b> - Nama aktor/sutradara: lowercase + hapus spasi antar kata (mis. <i>"kirsten johnson" → "kirstenjohnson"</i>) agar model tidak memisahkan sebagai token berbeda<br>
+          3. <b>Metadata Soup</b> - Semua kolom digabungkan menjadi satu string teks panjang<br>
+          4. <b>Lowercase</b> - Seluruh teks dikonversi ke huruf kecil untuk konsistensi embedding
         </div>
         """, unsafe_allow_html=True)
 
@@ -648,15 +747,3 @@ with tab3:
           6. <b>Tampilkan Top-N</b> rekomendasi beserta skor kemiripan
         </div>
         """, unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────
-#  FOOTER
-# ─────────────────────────────────────────────
-st.markdown("---")
-st.markdown(
-    "<div style='text-align:center; color:#555; font-size:.8rem;'>"
-    "🎬 Netflix Recommender System &nbsp;|&nbsp; Tugas Kelompok 2 &nbsp;|&nbsp; "
-    "SBERT · Cosine Similarity · Content-Based Filtering"
-    "</div>",
-    unsafe_allow_html=True
-)
