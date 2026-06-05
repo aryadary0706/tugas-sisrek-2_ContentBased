@@ -156,14 +156,13 @@ USERS = {
         "age": 28,
         "preferred_genres": ["Dramas", "International Movies"],
         "watch_history": [
-            {"title": "Gie"},                       # Ada di Dataset Netflix (Lama)
-            {"title": "Srimulat: Hil yang Mustahal"},# TIdak Ada di Dataset Netflix (Baru)
-            {"title": "Ali & Ratu Ratu Queens"},     # Ada di Dataset Netflix
-            {"title": "Agak Laen"},                 # Tidak Ada di Dataset Netflix (Baru)
+            {"title": "Gie"},
+            {"title": "Srimulat: Hil yang Mustahal"},
+            {"title": "Ali & Ratu Ratu Queens"},
+            {"title": "Agak Laen"},  
         ]
     },
     # 4. Genre Terdaftar, TAPI Seluruh History TIDAK Ada di Dataset (Film Indo Bioskop Terbaru)
-    # Efek: Cold start terpicu (Fallback ke Preferred Genres), kemiripan genre mungkin masih tinggi, tapi hit rate bisa jatuh jika rekomendasinya meleset dari history aktor/sutradara.
     "U004": {
         "name": "Dewi Lestari",
         "age": 27,
@@ -219,7 +218,6 @@ USERS = {
         ]
     },
     # 9. TARGET METRIK RENDAH: Genre Semuanya TIdak Ada (Sangat Absurd), History Watch Banyak & Terdaftar
-    # Efek: Mengacaukan profil agregasi rata-rata vektor jika model dipaksa membaca keyword absurd.
     "U009": {
         "name": "Hendra Wijaya",
         "age": 45,
@@ -243,7 +241,6 @@ USERS = {
     },
     # 11. PENGHANCUR METRIK (TARGET HIT RATE = 0 & SIMILARITY < 0.4): 
     # Genre Semuanya Tidak Ada (Absurd), History Banyak TAPI SEMUANYA TIDAK ADA di Dataset.
-    # Efek: Sistem terpaksa masuk ke mode Cold-Start murni memakai teks absurd. SBERT akan menghasilkan similarity score yang sangat rendah (< 0.4) dengan katalog film bioskop, dan evaluasi Overlap pastinya bernilai 0 (Hit Rate = 0).
     "U011": {
         "name": "Dimas Prasetyo",
         "age": 25,
