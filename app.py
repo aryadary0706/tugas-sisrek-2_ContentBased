@@ -239,29 +239,6 @@ USERS = {
             {"title": "Pride & Prejudice"},
         ]
     },
-    # 11. PENGHANCUR METRIK (TARGET HIT RATE = 0 & SIMILARITY < 0.4): 
-    # Genre Semuanya Tidak Ada (Absurd), History Banyak TAPI SEMUANYA TIDAK ADA di Dataset.
-    "U011": {
-        "name": "Dimas Prasetyo",
-        "age": 25,
-        "preferred_genres": ["Alat Pertukangan Semen Semprot", "Sistem Pipa Pembuangan Lumpur Sidoarjo"],
-        "watch_history": [
-            {"title": "Sekawan Limo"},            # Tidak Ada
-            {"title": "Ipar adalah Maut"},         # Tidak Ada
-            {"title": "Jurnal Risa by Risa Saraswati"}, # Tidak Ada
-            {"title": "Do You See What I See"},    # Tidak Ada
-        ]
-    },
-    # 12. PENGHANCUR METRIK: Genre Semuanya Tidak Ada (Absurd), History Sedikit & TIDAK ADA di Dataset
-    "U012": {
-        "name": "Laila Azzahra",
-        "age": 30,
-        "preferred_genres": ["Manajemen Akuntansi Neraca Saldo", "Kalkulus Integral Turunan Parsial"],
-        "watch_history": [
-            {"title": "Kang Mak from Pee Mak"}, # Tidak Ada
-            {"title": "Bolehkah Sekali Ini Saja Menangis"}, # Tidak Ada
-        ]
-    }
 }
 
 # ─────────────────────────────────────────────
@@ -608,7 +585,7 @@ with tab2:
             for i, (_, row) in enumerate(reccommendations_df.iterrows()):
                 rel  = metrics['relevance_scores'][i]
                 disc = round(rel / np.log2(i + 2), 4)
-                stars = "⭐" * rel + "" * (3 - rel)
+                stars = "⭐" * rel + "O" * (3 - rel)
                 rel_data.append({
                     "Pos": f"#{i+1}",
                     "Judul Film": row['title'][:35] + ("…" if len(row['title']) > 35 else ""),
