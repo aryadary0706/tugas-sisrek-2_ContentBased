@@ -1,27 +1,27 @@
+import os
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # suppress TF warnings
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 
-# ─────────────────────────────────────────────
 #  PAGE CONFIG
-# ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="Netflix RecSys – User-Based",
+    page_title="Tugas Besar Recsys: Content-Based",
     page_icon="🎬",
     layout="wide",
 )
 
-# ─────────────────────────────────────────────
-#  CUSTOM CSS
-# ─────────────────────────────────────────────
+#  CUSTOM CSS 
 st.markdown("""
 <style>
-/* ── global ── */
+/*  global  */
 body { font-family: 'Segoe UI', sans-serif; }
 
-/* ── top banner ── */
+/*  top banner  */
 .hero {
     background: #d13e3e;
     border-radius: 16px;
@@ -32,7 +32,7 @@ body { font-family: 'Segoe UI', sans-serif; }
 .hero h1 { font-size: 2.4rem; margin: 0 0 6px; letter-spacing: -0.5px; }
 .hero p  { font-size: 1.05rem; margin: 0; opacity: .85; }
 
-/* ── section headings ── */
+/*  section headings  */
 .section-title {
     font-size: 1.2rem;
     font-weight: 700;
@@ -42,7 +42,7 @@ body { font-family: 'Segoe UI', sans-serif; }
     margin: 22px 0 12px;
 }
 
-/* ── user card ── */
+/*  user card  */
 .user-card {
     background: #1e1e1e;
     border: 1px solid #333;
@@ -53,7 +53,7 @@ body { font-family: 'Segoe UI', sans-serif; }
 }
 .user-card b { color: #e50914; font-size: 1rem; }
 
-/* ── rec card ── */
+/*  rec card  */
 .rec-card {
     background: #1a1a2e;
     border-left: 5px solid #e50914;
@@ -76,7 +76,7 @@ body { font-family: 'Segoe UI', sans-serif; }
     margin-top: 8px;
 }
 
-/* ── history pill ── */
+/*  history pill  */
 .history-pill {
     display: inline-block;
     background: #2d2d2d;
@@ -87,7 +87,7 @@ body { font-family: 'Segoe UI', sans-serif; }
     margin: 3px 4px 3px 0;
 }
 
-/* ── metric box ── */
+/*  metric box  */
 .metric-box {
     background: #111;
     border: 1px solid #333;
@@ -99,7 +99,7 @@ body { font-family: 'Segoe UI', sans-serif; }
 .metric-box .val { font-size: 2rem; font-weight: 800; color: #e50914; }
 .metric-box .lbl { font-size: 0.85rem; color: #aaa; margin-top: 4px; }
 
-/* ── info box ── */
+/*  info box  */
 .info-box {
     background: #0d0d0d;
     border: 1px solid #2a2a2a;
@@ -113,9 +113,7 @@ body { font-family: 'Segoe UI', sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
 #  HERO BANNER
-# ─────────────────────────────────────────────
 st.markdown("""
 <div class="hero">
   <h1>Tugas Kelompok 2</h1>
@@ -123,128 +121,116 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-#  SYNTHETIC USER DATA (12 Variasi Kasus Ekstrem)
-# ─────────────────────────────────────────────
+
 USERS = {
-    # 1. Genre Terdaftar, History Lumayan, Semua Judul Ada di Dataset (Normal - High Score)
     "U001": {
         "name": "Arya Kusuma",
         "age": 24,
-        "preferred_genres": ["Thrillers", "Sci-Fi & Fantasy"],
+        "preferred_genres": ["Thrillers", "Sci-Fi & Fantasy", "Action & Adventures"],
         "watch_history": [
             {"title": "Bird Box"},
             {"title": "The Platform"},
             {"title": "Black Mirror: Bandersnatch"},
             {"title": "Inception"},
-            {"title": "Annihilation"},
+            {"title": "Doom: Annihilation"},
+            {"title": "Intrusion"},
+            {"title": "Squid Game"},
         ]
     },
-    # 2. Genre Terdaftar, History Sedikit, Semua Judul Ada di Dataset
     "U002": {
         "name": "Siti Rahayu",
         "age": 31,
         "preferred_genres": ["Romantic Movies", "Comedies"],
         "watch_history": [
-            {"title": "To All the Boys I've Loved Before"},
-            {"title": "Always Be My Maybe"},
+            {"title": "Valentine's Day"},
+            {"title": "Twilight"},
+            {"title": "Home Again"},
         ]
     },
-    # 3. Genre Terdaftar, Sebagian History Ada di Dataset (Campuran Film Indo Lama & Baru)
     "U003": {
         "name": "Budi Santoso",
         "age": 28,
         "preferred_genres": ["Dramas", "International Movies"],
         "watch_history": [
             {"title": "Gie"},
-            {"title": "Srimulat: Hil yang Mustahal"},
-            {"title": "Ali & Ratu Ratu Queens"},
-            {"title": "Agak Laen"},  
+            {"title": "Home Again"},
+            {"title": "Air Force One"},
+            {"title": "Charlie's Angels"},
         ]
     },
-    # 4. Genre Terdaftar, TAPI Seluruh History TIDAK Ada di Dataset (Film Indo Bioskop Terbaru)
     "U004": {
         "name": "Dewi Lestari",
         "age": 27,
-        "preferred_genres": ["Horror Movies", "Thrillers"],
+        "preferred_genres": ["Horror Movies", "Thrillers", "Drama"],
         "watch_history": [
-            {"title": "Siksa Kubur"},               # Tidak Ada (Film 2024)
-            {"title": "KKN di Desa Penari"},        # Tidak Ada
-            {"title": "Pengabdi Setan 2: Communion"},# Tidak Ada
         ]
     },
-    # 5. Genre Sebagian Ada (Campuran Normal & Absurd), History Watch Banyak (Ada di Dataset)
     "U005": {
         "name": "Reza Firmansyah",
         "age": 19,
-        "preferred_genres": ["Action & Adventure", "Otomotif Karburator Honda"], # Absurd campuran
+        "preferred_genres": ["Action & Adventure", "TV Horror"],
         "watch_history": [
-            {"title": "John Wick"},
+            {"title": "Eerie"},
             {"title": "Extraction"},
             {"title": "The Old Guard"},
             {"title": "6 Underground"},
         ]
     },
-    # 6. Genre Sebagian Ada (Campuran), History Watch Sedikit (Ada di Dataset)
     "U006": {
         "name": "Nia Permata",
         "age": 35,
-        "preferred_genres": ["Documentaries", "Kriptografi Quantum Cyber"], # Absurd campuran
+        "preferred_genres": ["Documentaries", "Crime"],
         "watch_history": [
             {"title": "Our Planet"},
             {"title": "Making a Murderer"},
         ]
     },
-    # 7. Genre Sebagian Ada, History Watch Banyak TAPI TIDAK ADA di Dataset
     "U007": {
         "name": "Farhan Nugroho",
         "age": 29,
-        "preferred_genres": ["Comedies", "Budidaya Ikan Lele Kolam Terpal"], 
+        "preferred_genres": ["Comedies", "Science & Nature"], 
         "watch_history": [
-            {"title": "Ancika: Dia yang Bersamaku 1995"}, # Tidak Ada
-            {"title": "Petualangan Sherina 2"},          # Tidak Ada
-            {"title": "Pasutri Gaje"},                   # Tidak Ada
-            {"title": "Kaka Boss"},                      # Tidak Ada
+            {"title": "Age of Tanks"},
+            {"title": "Arjun: The Warrior Prince"},
+            {"title": "Frontier"},
+            {"title": "Sick Note"},
+            {"title": "Target"},
         ]
     },
-    # 8. Genre Sebagian Ada, History Watch Sedikit TAPI TIDAK ADA di Dataset
     "U008": {
         "name": "Maya Indah",
         "age": 22,
-        "preferred_genres": ["Children & Family Movies", "Resep Seblak Ceker Pedas"], 
+        "preferred_genres": ["Children & Family Movies"], 
         "watch_history": [
-            {"title": "Badarawuhi di Desa Penari"}, # Tidak Ada
-            {"title": "Vina: Sebelum 7 Hari"},       # Tidak Ada
+            {"title": "Westside"},
+            {"title": "Damnation"},
+            {"title": "Follow This"},
+            {"title": "Gun City"},
+            {"title": "Gnome Alone"},
         ]
     },
-    # 9. TARGET METRIK RENDAH: Genre Semuanya TIdak Ada (Sangat Absurd), History Watch Banyak & Terdaftar
     "U009": {
         "name": "Hendra Wijaya",
         "age": 45,
-        "preferred_genres": ["Mesin Jahit Konveksi", "Suku Cadang Mesin Diesel Diesel"],
+        "preferred_genres": [],
         "watch_history": [
             {"title": "Inception"},
-            {"title": "Interstellar"},
             {"title": "The Matrix"},
-            {"title": "Blade Runner 2049"},
+            {"title": "Jailbirds New Orleans"},
+            {"title": "Sankofa"},
+            {"title": "A Silent Voice"},
         ]
     },
-    # 10. TARGET METRIK RENDAH: Genre Semuanya Tidak Ada (Absurd), History Watch Sedikit & Terdaftar
     "U010": {
         "name": "Ratna Sari",
         "age": 33,
-        "preferred_genres": ["Pertanian Organik Hidroponik", "Tekstil Industri Kain Katun"],
+        "preferred_genres": [],
         "watch_history": [
-            {"title": "The Notebook"},
-            {"title": "Pride & Prejudice"},
         ]
     },
 }
 
-# ─────────────────────────────────────────────
 #  DATA LOADING & PREPROCESSING
-# ─────────────────────────────────────────────
-
 def clean_names(text):
     if isinstance(text, str):
         text = text.lower()
@@ -253,6 +239,7 @@ def clean_names(text):
     return ""
     
 def clean_genres(genre_string):
+    # Buang Stop Words, clean simbol ('&', ','), penghilangan spasi
     if pd.isna(genre_string) or not isinstance(genre_string, str):
         return []
     # Ganti '&' dan ',' dengan spasi, ubah ke lowercase
@@ -275,7 +262,6 @@ def load_data():
     for f in features:
         df[f] = df[f].fillna('')
     
-    # Gabungkan semua fitur menjadi satu string untuk setiap film
     df['cast_cleaned'] = df['cast'].apply(clean_names)
     df['director_cleaned'] = df['director'].apply(clean_names)
     df['listed_in_cleaned'] = df['listed_in'].apply(clean_genres)
@@ -315,35 +301,44 @@ def get_recommendations(user_data, df_catalog, embeddings_matrix):
     watch_history = user_data.get('watch_history', [])
     preferred_genres = user_data.get('preferred_genres', [])
     
+    # Ambil rating[] yang ada di user
     allowed_ratings = get_max_allowed_rating(age)
+
     df_scores = df_catalog.copy()
     df_scores['rating'] = df_scores['rating'].fillna('NR')
     df_scores = df_scores[df_scores['rating'].isin(allowed_ratings)].reset_index(drop=True)
     
     valid_indices = df_catalog[df_catalog['rating'].fillna('NR').isin(allowed_ratings)].index
+
     filtered_embeddings = embeddings_matrix[valid_indices]
     
     catalog_genres = get_all_unique_genres(df_catalog)
     clean_user_pref = [w for genre in preferred_genres for w in clean_genres(genre) if w in catalog_genres]
 
     history_titles = [m['title'].lower() for m in watch_history]
+
     history_indices_in_filtered = df_scores[df_scores['title'].str.lower().isin(history_titles)].index.tolist()
     
     scores = np.zeros(len(df_scores))
     if not watch_history or not history_indices_in_filtered:
         if clean_user_pref:
+            # ambil genre disukai oleh user jika watch_history kosong
             pref_text = " ".join(clean_user_pref)
             user_profile_vector = model.encode([pref_text]).reshape(1, -1)
             scores = cosine_similarity(user_profile_vector, filtered_embeddings)[0]
         else:
-            scores = np.full(len(df_scores), 0.1000)
+            # Ambil list item dengan release_year terdekat
+            df_scores['release_year'] = pd.to_numeric(df_scores['release_year'], errors='coerce')
+            df_fallback = df_scores.sort_values('release_year', ascending=False).head(5)
+            df_fallback['similarity_score'] = 0.0
+            return df_fallback
     else:
-        user_vecs = filtered_embeddings[history_indices_in_filtered]
+        user_vecs = filtered_embeddings[history_indices_in_filtered] 
         user_profile_vector = np.mean(user_vecs, axis=0).reshape(1, -1)
         scores = cosine_similarity(user_profile_vector, filtered_embeddings)[0]
 
     df_scores['similarity_score'] = scores
-    
+    # DataFrame hasil akhir penyaringan di mana seluruh film yang judulnya terdaftar di dalam history_titles sudah dieliminasi agar user tidak direkomendasikan film yang sudah pernah ia tonton sebelumnya.
     df_final = df_scores[~df_scores['title'].str.lower().isin(history_titles)]
     return df_final.sort_values('similarity_score', ascending=False).head(5)
 
@@ -352,7 +347,7 @@ def evaluate_recommendations(recommendations, user_data, df_catalog):
     if recommendations.empty:
         return { "hit_rate": 0, "f1_score": 0, "precision_at_k": 0, "dcg": 0.0, "ndcg": 0.0, "relevance_scores": [], "ideal_relevance_scores": [] }
 
-    # ── Bangun kumpulan kata target dari preferred genres + watch history ──
+    #  Bangun kumpulan kata target dari preferred genres + watch history 
     user_target_words = set()
     for g in user_data.get('preferred_genres', []):
         user_target_words.update(clean_genres(g))
@@ -380,11 +375,11 @@ def evaluate_recommendations(recommendations, user_data, df_catalog):
 
         intersection = user_target_words.intersection(rec_words)
 
-        # ── Hit ──
+        #  Hit 
         if len(intersection) > 0:
             hits += 1
 
-        # ── F1 ──
+        #  F1 
         if len(rec_words) == 0 or len(user_target_words) == 0:
             f1 = 0.0
         else:
@@ -393,7 +388,7 @@ def evaluate_recommendations(recommendations, user_data, df_catalog):
             f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
         f1_scores.append(f1)
 
-        # ── Graded Relevance (0-3) berdasarkan overlap ratio ──
+        #  Graded Relevance (0-3) berdasarkan overlap ratio 
         if len(user_target_words) == 0:
             rel = 0
         else:
@@ -410,17 +405,17 @@ def evaluate_recommendations(recommendations, user_data, df_catalog):
 
     k = len(relevance_scores)
 
-    # ── Precision@K ──
+    #  Precision@K 
     precision_at_k = hits / k if k > 0 else 0.0
 
-    # ── DCG  (formula 9 dari slide: rel_i / log2(i+1)) ──
+    #  DCG  (formula 9 dari slide: rel_i / log2(i+1)) 
     dcg = sum(rel / np.log2(i + 2) for i, rel in enumerate(relevance_scores))
 
-    # ── IDCG – ideal ordering (sort descending) ──
+    #  IDCG – ideal ordering (sort descending) 
     ideal_rels = sorted(relevance_scores, reverse=True)
     idcg = sum(rel / np.log2(i + 2) for i, rel in enumerate(ideal_rels))
 
-    # ── NDCG ──
+    #  NDCG 
     ndcg = (dcg / idcg) if idcg > 0 else 0.0
 
     hit_rate = 1 if hits > 0 else 0
@@ -435,10 +430,7 @@ def evaluate_recommendations(recommendations, user_data, df_catalog):
         "ideal_relevance_scores": ideal_rels,
     }
 
-
-# ─────────────────────────────────────────────
 #  SIDEBAR – User Selection & Info
-# ─────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 👤 Pilih Active User")
     
@@ -462,11 +454,8 @@ with st.sidebar:
 
     selected_uid = st.session_state.selected_uid
 
-# ─────────────────────────────────────────────
 #  LOAD DATA  &  EMBEDDINGS
-# ─────────────────────────────────────────────
-
-# Cache data dan embeddings agar tidak perlu dihitung ulang setiap interaksi user
+# Cache data dan embeddings
 df = load_data()
 model = load_model()
 
@@ -476,18 +465,14 @@ user = USERS[selected_uid]
 # Bangun matriks embedding untuk seluruh katalog (sekali saja, cached)
 embeddings = build_embeddings(df['combined_features'].tolist(), model)
 
-# ─────────────────────────────────────────────
 #  FUNGSI REKOMENDASI & EVALUASI
-# ─────────────────────────────────────────────
 reccommendations_df = get_recommendations(user, df, embeddings)
 metrics = evaluate_recommendations(reccommendations_df, user, df)
 
-# ─────────────────────────────────────────────
 #  TABS
-# ─────────────────────────────────────────────
 tab1, tab2, tab3 = st.tabs(["🎯 Rekomendasi", "📊 Evaluasi & Metrik", "ℹ️ Tentang Sistem"])
 
-# ────────── TAB 1 : REKOMENDASI ──────────
+#  TAB 1 : REKOMENDASI 
 with tab1:
     col_left, col_right = st.columns([1, 2], gap="large")
 
@@ -507,18 +492,18 @@ with tab1:
             # Ambil rating asli dari catalog jika ada, atau fallback ke teks default
             match = df[df['title'].str.lower() == movie['title'].lower()]
             rating_content = match.iloc[0]['rating'] if not match.empty else "N/A"
+            genres_content = match.iloc[0]['listed_in'] if not match.empty else "N/A"
             
             st.markdown(f"""
             <div class="user-card" style="padding:10px 16px;">
               🎥 <b>{movie['title']}</b><br>
-              <span style="color:#888; font-size:.78rem;"> Rating Konten: {rating_content}</span>
+              <span style="color:#888; font-size:.78rem;"> Rating: {rating_content}</span><br/>
+              <span style="color:#888; font-size:.78rem;"> Genre: {genres_content}</span>
             </div>
             """, unsafe_allow_html=True)
 
     with col_right:
         st.markdown('<div class="section-title">🔎 Rekomendasi Konten</div>', unsafe_allow_html=True)
-
-        # Cek apakah hasil rekomendasi kosong
         if reccommendations_df.empty:
             st.warning("Tidak ada film yang cocok dengan profil user atau batasan usia.")
         else:
@@ -534,7 +519,7 @@ with tab1:
                 """, unsafe_allow_html=True)
 
 
-# ────────── TAB 2 : EVALUASI ──────────
+#  TAB 2 : EVALUASI 
 with tab2:
     st.markdown('<div class="section-title">📐 Metrik Evaluasi untuk User Aktif</div>', unsafe_allow_html=True)
     st.info(
@@ -543,7 +528,7 @@ with tab2:
     )
 
     if metrics and not reccommendations_df.empty:
-        # ── Baris 1: 4 metrik utama ──
+        #  Baris 1: 4 metrik utama 
         c1, c2, c3, c4 = st.columns(4)
         with c1:
             hr_label = "✅ Hit" if metrics['hit_rate'] == 1 else "❌ Miss"
@@ -569,7 +554,7 @@ with tab2:
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # ── Baris 2: DCG detail + tabel relevance ──
+        #  Baris 2: DCG detail + tabel relevance 
         col_dcg, col_tbl = st.columns([1, 2], gap="large")
 
         with col_dcg:
@@ -585,7 +570,7 @@ with tab2:
             for i, (_, row) in enumerate(reccommendations_df.iterrows()):
                 rel  = metrics['relevance_scores'][i]
                 disc = round(rel / np.log2(i + 2), 4)
-                stars = "⭐" * rel + "O" * (3 - rel)
+                stars = "⭐" * rel + "" * (3 - rel)
                 rel_data.append({
                     "Pos": f"#{i+1}",
                     "Judul Film": row['title'][:35] + ("…" if len(row['title']) > 35 else ""),
@@ -653,7 +638,7 @@ with tab2:
     """, unsafe_allow_html=True)
 
 
-# ────────── TAB 3 : ABOUT ──────────
+#  TAB 3 : ABOUT 
 with tab3:
     col1, col2 = st.columns(2, gap="large")
 
@@ -712,12 +697,16 @@ with tab3:
         st.markdown('<div class="section-title">🔄 Alur Sistem Rekomendasi</div>', unsafe_allow_html=True)
         st.markdown("""
         <div class="info-box">
-          <h4>User-Based Content Filtering</h4>
-          1. <b>Ambil riwayat tontonan</b> user aktif (judul + rating)<br>
-          2. <b>Cari embedding</b> setiap film di riwayat dari matriks embedding global<br>
-          3. <b>Agregasi profil</b> – rata-rata (<i>mean</i>) seluruh vektor film menjadi satu <b>User Profile Vector</b><br>
-          4. <b>Cosine Similarity</b> – hitung kemiripan profil user dengan semua film di katalog<br>
-          5. <b>Filter & Ranking</b> – hilangkan film yang sudah ditonton, urutkan skor tertinggi<br>
-          6. <b>Tampilkan Top-N</b> rekomendasi beserta skor kemiripan
+            <h4>Content-Based Filtering</h4>
+            1. <b>Embeddings Global</b> seluruh data pada dataset film (kombinasi fitur yang dipakai) <br>
+            2. <b>Ambil riwayat tontonan</b> user aktif (judul, deskripsi, rating, cast, director)<br>
+            3. <b>Penanganan Usia (rating)</b> memfilter konten berdasarkan batas usia pengguna sebelum menghitung similarity<br>
+            4. <b>Cari embedding</b> setiap film di riwayat dari matriks embedding global<br>
+            5. <b>Agregasi profil</b> = rata-rata (<i>mean</i>) seluruh vektor film menjadi satu <b>User Profile Vector Jika ada history tontonan</b><br>
+            6. <b>Penanganan Cold Start<b> - Jika tidak ada riwayat tetapi ada genre favorit => Buat profil dari embedding teks genre favorit tersebut.<br>
+            7. <b>Penanganan Cold Start<b> - Jika tidak ada riwayat dan tidak ada genre favorit → Rekomendasikan film terbaru berdasarkan <code>release_year</code>.<br>
+            9. <b>Cosine Similarity</b> - hitung kemiripan profil user dengan semua film di katalog<br>
+            10. <b>Filter & Ranking</b> - hilangkan film yang sudah ditonton, urutkan skor tertinggi<br>
+            11. <b>Tampilkan Top-N</b> rekomendasi beserta skor kemiripan
         </div>
         """, unsafe_allow_html=True)
